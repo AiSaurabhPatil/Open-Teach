@@ -1,6 +1,8 @@
 import os
 import time
 import numpy as np
+import zmq
+import cv2
 from openteach.utils.timer import FrequencyTimer
 from openteach.utils.network import ZMQCameraPublisher, ZMQCompressedImageTransmitter,ZMQKeypointPublisher,ZMQKeypointSubscriber
 from openteach.components.environment.arm_env import Arm_Env
@@ -163,8 +165,9 @@ class LiberoEnv(Arm_Env):
 	   			
 	# Take action
 	def take_action(self):
-		action = self.endeff_pos_subscriber.recv_keypoints()
-		self.obs, _, _, _ = self.env.step(action)                   
+		action = self.endeff_pos_subscriber.recv_keypoints(flags=zmq.NOBLOCK)
+		if action is not None:
+			self.obs, _, _, _ = self.env.step(action)                   
 
 	# Stream the environment
 	def stream(self):
@@ -180,6 +183,11 @@ class LiberoEnv(Arm_Env):
 			self.rgb_publisher.pub_rgb_image(color_image, timestamp)
 			self.rgb_publisher_ego.pub_rgb_image(color_image_ego, timestamp_ego)
 			self.timestamp_publisher.pub_keypoints(timestamp,'timestamps')
+
+			# Visualize on PC
+			# cv2.imshow("Libero Simulation", cv2.cvtColor(color_image, cv2.COLOR_RGB2BGR))
+			# cv2.waitKey(1)
+
 			#Set this to True        
 			if self._stream_oculus:
 				self.rgb_viz_publisher.send_image(rescale_image(color_image, 2)) # 128 * 128
